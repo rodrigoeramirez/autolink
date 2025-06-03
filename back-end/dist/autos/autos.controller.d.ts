@@ -14,7 +14,13 @@ export declare class AutosController {
         fechaBaja: Date | null;
         id: string;
     }>;
-    findAll(): string;
+    findAll(): Promise<"No existen autos disponibles" | {
+        modelo: string;
+        marca: string;
+        año: number;
+        precio: import("generated/prisma/runtime/library").Decimal;
+        estado: import("generated/prisma").$Enums.EstadoAuto;
+    }[]>;
     findOne(id: string): string;
     update(id: string, updateAutoDto: UpdateAutoDto): string;
     remove(id: string): string;
