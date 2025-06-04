@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, HttpException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateAutoDto } from './dto/create-auto.dto';
 import { UpdateAutoDto } from './dto/update-auto.dto';
 import {PrismaService} from "src/prisma/prisma.service"
@@ -8,7 +8,7 @@ import { Logger } from '@nestjs/common';
 export class AutosService {
   private readonly logger = new Logger(AutosService.name);
   constructor(private prisma: PrismaService){
-    // Inyecto una instancia de la clase PrismaService, para interactuar con la BD y poder realizar operaciones (CRUD, transacciones, consultas complejas, etc.) dentro de la clase GimnasioService.
+    // Inyecto una instancia de la clase PrismaService, para interactuar con la BD y poder realizar operaciones (CRUD, transacciones, consultas complejas, etc.)
 }
 async  create(createAutoDto: CreateAutoDto) {
 
@@ -41,25 +41,89 @@ async  create(createAutoDto: CreateAutoDto) {
     }
   }
 
-  async findAll() {
+  // findAll recupera los autos que están dados de alta y trabaja con paginación para evitar tener una mala performance en caso de que el volumen de datos sea muy grande. Tambien se agregaron algunos filtros opcionales para realizar la busqueda. 
+  async findAll(
+    page: number = 1, // Página actual (por defecto 1)
+    pageSize: number = 10, // Elementos por página (por defecto 10)
+    filters?: { // Objeto de filtros opcional.
+      marca?: string;
+      estado?: string;
+      añoMin?: number;
+      añoMax?: number;
+      precioMin?: number;
+      precioMax?: number;
+    }
+  ) {
     try {
-      const autos = await this.prisma.auto.findMany(
-        {where:{fechaBaja: null},
-         select:{modelo:true,
-                 marca:true,
-                 año:true,
-                 precio:true,
-                 estado:true 
-         } 
-        });
-      if (autos) {
-        return autos;
-      } else {
-        return "No existen autos disponibles";
+      const skip = (page - 1) * pageSize; // Calcula cuántos registros saltar (offset)
+      
+      // Construyo el objeto 'where' para los filtros
+      const where: any = { 
+        fechaBaja: null,
+      };
+  
+      // Aplicar filtros y los adhiero al where
+      if (filters) {
+        if (filters.marca) {
+          where.marca = { contains: filters.marca, mode: 'insensitive' };
+        }
+        
+        if (filters.estado) {
+          where.estado = filters.estado;
+        }
+        
+        // Filtro por rango de año
+        if (filters.añoMin || filters.añoMax) {
+          where.año = {};
+          if (filters.añoMin) where.año.gte = filters.añoMin;
+          if (filters.añoMax) where.año.lte = filters.añoMax;
+        }
+        
+        // Filtro por rango de precio
+        if (filters.precioMin || filters.precioMax) {
+          where.precio = {};
+          if (filters.precioMin) where.precio.gte = filters.precioMin;
+          if (filters.precioMax) where.precio.lte = filters.precioMax;
+        }
       }
+      
+      // Ejecuto dos consultas en paralelo para mejor performance
+      const [autos, total] = await Promise.all([
+        this.prisma.auto.findMany({
+          where,
+          select: {
+            modelo: true,
+            marca: true,
+            año: true,
+            precio: true,
+            estado: true
+          },
+          skip,
+          take: pageSize,
+          orderBy: { año: 'asc' }
+        }),
+        this.prisma.auto.count({ where })
+      ]);
+      
+      // Calcula el total de páginas
+      const totalPages = Math.ceil(total / pageSize);
+      
+      // Prepara la respuesta
+      return {
+        data: autos,
+        pagination: { //Metadatos útiles para navegación
+          total,
+          page,
+          pageSize,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      };
+  
     } catch (error) {
-      console.error("Error al obtener los autos desde la BD:"+error.message);
-      throw new InternalServerErrorException("Error al obtener los autos desde la BD.");
+      console.error("Error en autosService.findAll:", error);
+      throw new InternalServerErrorException("Error al obtener autos");
     }
   }
 
@@ -71,8 +135,43 @@ async  create(createAutoDto: CreateAutoDto) {
     return `This action updates a #${id} auto`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} auto`;
+  // remove hace un borrado logico, solo cambia de valor el atributo fechaBaja.
+  async remove(patente: string) {
+
+    const errores = this.validarPatente(patente);
+    if (errores.length > 0) {
+      throw new BadRequestException ({
+        message:"Patente invalida, debe tener el siguiente formato: ABC123 o AB123CD",
+        errors: errores
+      });
+    }
+
+     // Si patenteDisponible devuelve true, quiere decir que la patente no se encuentra en la BD.
+    if ((await this.patenteDisponible(patente))===true){
+      throw new NotFoundException("La patente ingresada no se encuentra registrada en la base de datos.");  // Se usa para recursos que no existen
+    } // Lo pongo afuera del try, asi le muestra el ConflictException al cliente. Si lo pongo dentro del try se pisa con el catch.
+
+    try {
+      // Actualizo directamente
+      const autoBaja = await this.prisma.auto.update({
+        where:{patente},
+        data:{fechaBaja:new Date()},
+        select:{
+          marca:true,
+          modelo:true,
+          año:true,
+          fechaBaja:true
+        }
+       });
+      return {
+        message:"Auto dado de baja correctamente",
+        auto:autoBaja
+      };
+      
+    } catch (error) {
+      console.error("Ha ocurrido un error al dar de baja el auto:" + error.message);
+      throw new InternalServerErrorException("Ha ocurrido un error al dar de baja el auto en la BD.");
+    }
   }
   // Este metodo valida que la patente no se encuentre en la BD. Si devuelve true significa que esta disponible y si devuelve false quiere decir que la patente ya está en uso.
   async patenteDisponible(patente:string): Promise <boolean> {

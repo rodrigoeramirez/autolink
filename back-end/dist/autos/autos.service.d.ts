@@ -15,16 +15,41 @@ export declare class AutosService {
         fechaBaja: Date | null;
         id: string;
     }>;
-    findAll(): Promise<{
-        modelo: string;
-        marca: string;
-        año: number;
-        precio: import("generated/prisma/runtime/library").Decimal;
-        estado: import("generated/prisma").$Enums.EstadoAuto;
-    }[] | "No existen autos disponibles">;
+    findAll(page?: number, pageSize?: number, filters?: {
+        marca?: string;
+        estado?: string;
+        añoMin?: number;
+        añoMax?: number;
+        precioMin?: number;
+        precioMax?: number;
+    }): Promise<{
+        data: {
+            modelo: string;
+            marca: string;
+            año: number;
+            precio: import("generated/prisma/runtime/library").Decimal;
+            estado: import("generated/prisma").$Enums.EstadoAuto;
+        }[];
+        pagination: {
+            total: number;
+            page: number;
+            pageSize: number;
+            totalPages: number;
+            hasNextPage: boolean;
+            hasPrevPage: boolean;
+        };
+    }>;
     findOne(id: number): string;
     update(id: number, updateAutoDto: UpdateAutoDto): string;
-    remove(id: number): string;
+    remove(patente: string): Promise<{
+        message: string;
+        auto: {
+            modelo: string;
+            marca: string;
+            año: number;
+            fechaBaja: Date | null;
+        };
+    }>;
     patenteDisponible(patente: string): Promise<boolean>;
     validarPatente(patente: string): string[];
 }

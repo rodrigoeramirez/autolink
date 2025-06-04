@@ -14,14 +14,32 @@ export declare class AutosController {
         fechaBaja: Date | null;
         id: string;
     }>;
-    findAll(): Promise<"No existen autos disponibles" | {
-        modelo: string;
-        marca: string;
-        año: number;
-        precio: import("generated/prisma/runtime/library").Decimal;
-        estado: import("generated/prisma").$Enums.EstadoAuto;
-    }[]>;
+    findAll(page?: string, pageSize?: string, marca?: string, estado?: string, añoMin?: number, añoMax?: number, precioMin?: number, precioMax?: number): Promise<{
+        data: {
+            modelo: string;
+            marca: string;
+            año: number;
+            precio: import("generated/prisma/runtime/library").Decimal;
+            estado: import("generated/prisma").$Enums.EstadoAuto;
+        }[];
+        pagination: {
+            total: number;
+            page: number;
+            pageSize: number;
+            totalPages: number;
+            hasNextPage: boolean;
+            hasPrevPage: boolean;
+        };
+    }>;
     findOne(id: string): string;
     update(id: string, updateAutoDto: UpdateAutoDto): string;
-    remove(id: string): string;
+    remove(patente: string): Promise<{
+        message: string;
+        auto: {
+            modelo: string;
+            marca: string;
+            año: number;
+            fechaBaja: Date | null;
+        };
+    }>;
 }

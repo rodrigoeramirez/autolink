@@ -42,26 +42,66 @@ let AutosService = AutosService_1 = class AutosService {
             throw new common_1.InternalServerErrorException('Error desconocido en el servidor.');
         }
     }
-    async findAll() {
+    async findAll(page = 1, pageSize = 10, filters) {
         try {
-            const autos = await this.prisma.auto.findMany({ where: { fechaBaja: null },
-                select: { modelo: true,
-                    marca: true,
-                    año: true,
-                    precio: true,
-                    estado: true
+            const skip = (page - 1) * pageSize;
+            const where = {
+                fechaBaja: null,
+            };
+            if (filters) {
+                if (filters.marca) {
+                    where.marca = { contains: filters.marca, mode: 'insensitive' };
                 }
-            });
-            if (autos) {
-                return autos;
+                if (filters.estado) {
+                    where.estado = filters.estado;
+                }
+                if (filters.añoMin || filters.añoMax) {
+                    where.año = {};
+                    if (filters.añoMin)
+                        where.año.gte = filters.añoMin;
+                    if (filters.añoMax)
+                        where.año.lte = filters.añoMax;
+                }
+                if (filters.precioMin || filters.precioMax) {
+                    where.precio = {};
+                    if (filters.precioMin)
+                        where.precio.gte = filters.precioMin;
+                    if (filters.precioMax)
+                        where.precio.lte = filters.precioMax;
+                }
             }
-            else {
-                return "No existen autos disponibles";
-            }
+            const [autos, total] = await Promise.all([
+                this.prisma.auto.findMany({
+                    where,
+                    select: {
+                        modelo: true,
+                        marca: true,
+                        año: true,
+                        precio: true,
+                        estado: true
+                    },
+                    skip,
+                    take: pageSize,
+                    orderBy: { año: 'asc' }
+                }),
+                this.prisma.auto.count({ where })
+            ]);
+            const totalPages = Math.ceil(total / pageSize);
+            return {
+                data: autos,
+                pagination: {
+                    total,
+                    page,
+                    pageSize,
+                    totalPages,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1
+                }
+            };
         }
         catch (error) {
-            console.error("Error al obtener los autos desde la BD:" + error.message);
-            throw new common_1.InternalServerErrorException("Error al obtener los autos desde la BD.");
+            console.error("Error en autosService.findAll:", error);
+            throw new common_1.InternalServerErrorException("Error al obtener autos");
         }
     }
     findOne(id) {
@@ -70,8 +110,37 @@ let AutosService = AutosService_1 = class AutosService {
     update(id, updateAutoDto) {
         return `This action updates a #${id} auto`;
     }
-    remove(id) {
-        return `This action removes a #${id} auto`;
+    async remove(patente) {
+        const errores = this.validarPatente(patente);
+        if (errores.length > 0) {
+            throw new common_1.BadRequestException({
+                message: "Patente invalida, debe tener el siguiente formato: ABC123 o AB123CD",
+                errors: errores
+            });
+        }
+        if ((await this.patenteDisponible(patente)) === true) {
+            throw new common_1.NotFoundException("La patente ingresada no se encuentra registrada en la base de datos.");
+        }
+        try {
+            const autoBaja = await this.prisma.auto.update({
+                where: { patente },
+                data: { fechaBaja: new Date() },
+                select: {
+                    marca: true,
+                    modelo: true,
+                    año: true,
+                    fechaBaja: true
+                }
+            });
+            return {
+                message: "Auto dado de baja correctamente",
+                auto: autoBaja
+            };
+        }
+        catch (error) {
+            console.error("Ha ocurrido un error al dar de baja el auto:" + error.message);
+            throw new common_1.InternalServerErrorException("Ha ocurrido un error al dar de baja el auto en la BD.");
+        }
     }
     async patenteDisponible(patente) {
         try {
