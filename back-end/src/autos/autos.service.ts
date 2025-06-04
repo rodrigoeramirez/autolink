@@ -127,8 +127,34 @@ async  create(createAutoDto: CreateAutoDto) {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} auto`;
+  async findOne(patente: string) {
+    const errores = this.validarPatente(patente);
+    if (errores.length > 0) {
+      throw new BadRequestException ({
+        message:"Patente invalida, debe tener el siguiente formato: ABC123 o AB123CD",
+        errors: errores
+      });
+    }
+
+     // Si patenteDisponible devuelve true, quiere decir que la patente no se encuentra en la BD.
+    if ((await this.patenteDisponible(patente))===true){
+      throw new NotFoundException("La patente ingresada no se encuentra registrada en la base de datos.");  // Se usa para recursos que no existen
+    } // Lo pongo afuera del try, asi le muestra el ConflictException al cliente. Si lo pongo dentro del try se pisa con el catch.
+    
+    try {
+      const auto = await this.prisma.auto.findUnique({where:{patente}});
+      if (auto) {
+        return {
+          message:"Auto encontrado",
+          auto:auto
+        }
+      } else {
+        return "Auto no encontrado, vericar ID ingresado";
+      }
+    } catch (error) {
+      console.error("Hubo un error al recuperar el auto:" + error.message);
+      throw new InternalServerErrorException("Error desconocido al recuperar el auto, ver consola para más información.")
+    }
   }
 
   update(id: number, updateAutoDto: UpdateAutoDto) {

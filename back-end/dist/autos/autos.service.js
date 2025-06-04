@@ -104,8 +104,33 @@ let AutosService = AutosService_1 = class AutosService {
             throw new common_1.InternalServerErrorException("Error al obtener autos");
         }
     }
-    findOne(id) {
-        return `This action returns a #${id} auto`;
+    async findOne(patente) {
+        const errores = this.validarPatente(patente);
+        if (errores.length > 0) {
+            throw new common_1.BadRequestException({
+                message: "Patente invalida, debe tener el siguiente formato: ABC123 o AB123CD",
+                errors: errores
+            });
+        }
+        if ((await this.patenteDisponible(patente)) === true) {
+            throw new common_1.NotFoundException("La patente ingresada no se encuentra registrada en la base de datos.");
+        }
+        try {
+            const auto = await this.prisma.auto.findUnique({ where: { patente } });
+            if (auto) {
+                return {
+                    message: "Auto encontrado",
+                    auto: auto
+                };
+            }
+            else {
+                return "Auto no encontrado, vericar ID ingresado";
+            }
+        }
+        catch (error) {
+            console.error("Hubo un error al recuperar el auto:" + error.message);
+            throw new common_1.InternalServerErrorException("Error desconocido al recuperar el auto, ver consola para más información.");
+        }
     }
     update(id, updateAutoDto) {
         return `This action updates a #${id} auto`;

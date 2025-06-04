@@ -43,9 +43,9 @@ export class AutosController {
     });
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.autosService.findOne(+id);
+  @Get(':patente')
+  findOne(@Param('patente') patente: string) {
+    return this.autosService.findOne(patente);
   }
 
   @Patch(':id')

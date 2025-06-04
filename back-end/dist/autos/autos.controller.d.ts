@@ -31,7 +31,19 @@ export declare class AutosController {
             hasPrevPage: boolean;
         };
     }>;
-    findOne(id: string): string;
+    findOne(patente: string): Promise<"Auto no encontrado, vericar ID ingresado" | {
+        message: string;
+        auto: {
+            patente: string;
+            modelo: string;
+            marca: string;
+            año: number;
+            precio: import("generated/prisma/runtime/library").Decimal;
+            estado: import("generated/prisma").$Enums.EstadoAuto;
+            fechaBaja: Date | null;
+            id: string;
+        };
+    }>;
     update(id: string, updateAutoDto: UpdateAutoDto): string;
     remove(patente: string): Promise<{
         message: string;

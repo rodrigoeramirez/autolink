@@ -39,7 +39,19 @@ export declare class AutosService {
             hasPrevPage: boolean;
         };
     }>;
-    findOne(id: number): string;
+    findOne(patente: string): Promise<"Auto no encontrado, vericar ID ingresado" | {
+        message: string;
+        auto: {
+            patente: string;
+            modelo: string;
+            marca: string;
+            año: number;
+            precio: import("generated/prisma/runtime/library").Decimal;
+            estado: import("generated/prisma").$Enums.EstadoAuto;
+            fechaBaja: Date | null;
+            id: string;
+        };
+    }>;
     update(id: number, updateAutoDto: UpdateAutoDto): string;
     remove(patente: string): Promise<{
         message: string;
