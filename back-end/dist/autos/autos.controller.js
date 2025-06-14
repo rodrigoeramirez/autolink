@@ -40,7 +40,7 @@ let AutosController = class AutosController {
         return this.autosService.findOne(patente);
     }
     update(id, updateAutoDto) {
-        return this.autosService.update(+id, updateAutoDto);
+        return this.autosService.update(id, updateAutoDto);
     }
     remove(patente) {
         return this.autosService.remove(patente);

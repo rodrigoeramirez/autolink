@@ -30,7 +30,10 @@ async  create(createAutoDto: CreateAutoDto) {
       const nuevoAuto = await this.prisma.auto.create({
         data: createAutoDto,
       });
-      return nuevoAuto;
+      return {
+        message:"Auto creado con exito",
+        auto:nuevoAuto
+      };
     } catch (error) {
       
       // Para ver el error en la terminal
@@ -157,8 +160,19 @@ async  create(createAutoDto: CreateAutoDto) {
     }
   }
 
-  update(id: number, updateAutoDto: UpdateAutoDto) {
-    return `This action updates a #${id} auto`;
+  async update(id: string, updateAutoDto: UpdateAutoDto) {
+     try {
+      const autoUpdate = await this.prisma.auto.update({where:{id}, data:updateAutoDto });
+      if (autoUpdate) {
+        return {
+          message:"Auto actualizado con exito",
+          auto:autoUpdate
+        };
+      }
+     } catch (error) {
+      console.error("Error al actualziar el auto: "+ error.message);
+      throw new InternalServerErrorException("Error en el servidor al actualizar el auto, verificar logs.");
+     }
   }
 
   // remove hace un borrado logico, solo cambia de valor el atributo fechaBaja.
@@ -199,6 +213,7 @@ async  create(createAutoDto: CreateAutoDto) {
       throw new InternalServerErrorException("Ha ocurrido un error al dar de baja el auto en la BD.");
     }
   }
+
   // Este metodo valida que la patente no se encuentre en la BD. Si devuelve true significa que esta disponible y si devuelve false quiere decir que la patente ya está en uso.
   async patenteDisponible(patente:string): Promise <boolean> {
     try {

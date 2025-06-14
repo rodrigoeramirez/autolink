@@ -132,8 +132,20 @@ let AutosService = AutosService_1 = class AutosService {
             throw new common_1.InternalServerErrorException("Error desconocido al recuperar el auto, ver consola para más información.");
         }
     }
-    update(id, updateAutoDto) {
-        return `This action updates a #${id} auto`;
+    async update(id, updateAutoDto) {
+        try {
+            const autoUpdate = await this.prisma.auto.update({ where: { id }, data: updateAutoDto });
+            if (autoUpdate) {
+                return {
+                    message: "Auto actualizado con exito",
+                    auto: autoUpdate
+                };
+            }
+        }
+        catch (error) {
+            console.error("Error al actualziar el auto: " + error.message);
+            throw new common_1.InternalServerErrorException("Error en el servidor al actualizar el auto, verificar logs.");
+        }
     }
     async remove(patente) {
         const errores = this.validarPatente(patente);

@@ -44,7 +44,19 @@ export declare class AutosController {
             id: string;
         };
     }>;
-    update(id: string, updateAutoDto: UpdateAutoDto): string;
+    update(id: string, updateAutoDto: UpdateAutoDto): Promise<{
+        message: string;
+        auto: {
+            patente: string;
+            modelo: string;
+            marca: string;
+            año: number;
+            precio: import("generated/prisma/runtime/library").Decimal;
+            estado: import("generated/prisma").$Enums.EstadoAuto;
+            fechaBaja: Date | null;
+            id: string;
+        };
+    } | undefined>;
     remove(patente: string): Promise<{
         message: string;
         auto: {

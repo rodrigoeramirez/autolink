@@ -50,7 +50,7 @@ export class AutosController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateAutoDto: UpdateAutoDto) {
-    return this.autosService.update(+id, updateAutoDto);
+    return this.autosService.update(id, updateAutoDto);
   }
 
   @Delete(':patente')
